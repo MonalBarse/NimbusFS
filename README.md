@@ -1,8 +1,26 @@
 # NimbusFS
-NimbusDFS is a sophisticated distributed file system designed to provide efficient &amp; reliable data storage across multiple nodes ensuring redundancy and high availability.
+
+NimbusFS is a sophisticated distributed file system designed to provide efficient and reliable data storage across multiple nodes ensuring redundancy and high availability.
+
+**Note:** I am currently in the process of building NimbusFS and will update this README with more detailed information soon.
 
 
-- I am currently in process of building NimbusFS. Here are some resources that got me started: 
-    - [link_1](https://youtu.be/Xhi3hqbiXNM?si=wugO4eVKXAbnnh6d)
-    - [link_2](https://youtu.be/McTWc6N-pBg?si=ybu6mm5LQPkQHe32)
-    - [link_3](https://youtu.be/QmNlluPbEEk?si=vO9T76K4AeRsoN-4)
+## Resources
+
+### Educational Videos
+
+These educational videos provided foundational knowledge and inspiration for building NimbusFS:
+
+- **Distributed Computing - DFS** by [Perfect CE](https://www.youtube.com/@perfectcomputerengineer): [Watch on YouTube](https://youtu.be/Xhi3hqbiXNM)
+- **Big Data Analysis - DFS** by [Perfect CE](https://www.youtube.com/@perfectcomputerengineer): [Watch on YouTube](https://youtu.be/McTWc6N-pBg)
+- **Architecture of a DFS** by [Knowledge Hub](https://www.youtube.com/@knowledgehub9741): [Watch on YouTube](https://youtu.be/QmNlluPbEEk)
+- **Hadoop - HDFS** by [SimpliLearn](https://www.youtube.com/@SimplilearnOfficial): [Watch on YouTube](https://youtu.be/6apXsm_25s0)
+
+
+## Contributing
+
+Contributions are welcome! Please read the [contribution guidelines](CONTRIBUTING.md) before submitting a pull request.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
