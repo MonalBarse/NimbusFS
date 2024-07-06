@@ -1,6 +1,6 @@
 # NimbusFS
 
-NimbusFS is a sophisticated distributed file system designed to provide efficient and reliable data storage across multiple nodes ensuring redundancy and high availability.
+NimbusFS is a sophisticated distributed file storage system designed to provide efficient and reliable data storage across multiple nodes ensuring redundancy and high availability.
 
 **Note:** I am currently in the process of building NimbusFS and will update this README with more detailed information soon.
 
