@@ -4,7 +4,6 @@ NimbusFS is a sophisticated distributed file storage system designed to provide 
 
 **Note:** I am currently in the process of building NimbusFS and will update this README with more detailed information soon.
 
-
 ## Resources
 
 ### Educational Videos
@@ -16,6 +15,7 @@ These educational videos provided foundational knowledge and inspiration for bui
 - **Architecture of a DFS** by [Knowledge Hub](https://www.youtube.com/@knowledgehub9741): [Watch on YouTube](https://youtu.be/QmNlluPbEEk)
 - **Hadoop - HDFS** by [SimpliLearn](https://www.youtube.com/@SimplilearnOfficial): [Watch on YouTube](https://youtu.be/6apXsm_25s0)
 
+https://youtu.be/waVtYYSXkXU?si=UFP2YRSx0dxZ1fRc
 
 ## Contributing
 
