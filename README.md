@@ -30,9 +30,10 @@ NimbusFS consists of several key components:
 
 1. **FileServer**: Manages file storage, retrieval, and network communication.
 2. **Store**: Handles local file storage and retrieval.
-      <!-- 3. **P2P Package**: Implements network transport and peer communication. -->
-      <!-- 3. **Crypto Module**: Provides encryption, decryption, and hashing functionalities. -->
-   will update soon
+     <!-- 3. **P2P Package**: Implements network transport and peer communication. -->
+     <!-- 3. **Crypto Module**: Provides encryption, decryption, and hashing functionalities. -->
+
+- will update soon
 
 ## Resources
 

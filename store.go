@@ -166,22 +166,67 @@ func (s *Store) Has(id string, key string) bool {
 /* 4. Delete the file from the store ----------------------------------------------------- */
 
 func (s *Store) Delete(id string, key string) error {
-	// Delete a specific file from the store
 	pathKey := s.PathTransformFunc(key)
 
 	defer func() {
 		log.Printf("deleted [%s] from disk", pathKey.Filename)
 	}()
 
-	pathNameWithRoot := fmt.Sprintf("%s/%s/%s", s.Root, id, pathKey.FirstPathName())
+	fullPathWithRoot := fmt.Sprintf("%s/%s/%s", s.Root, id, pathKey.FullPath())
 
-	return os.RemoveAll(pathNameWithRoot) // RemoveAll removes path and any children it contains.
+	// Remove the specific file
+	if err := os.Remove(fullPathWithRoot); err != nil {
+		return fmt.Errorf("failed to delete file: %w", err)
+	}
+
+	// We then can clean up empty directories
+	subFolders := strings.Split(fullPathWithRoot, "/")
+	for i := len(subFolders) - 1; i >= 0; i-- {
+		subPath := strings.Join(subFolders[:i+1], "/")
+		isEmpty, err := isDirEmpty(subPath)
+		if err != nil {
+			return err
+		}
+		if !isEmpty {
+			break
+		}
+		if err := os.Remove(subPath); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// to check if the dir is empty first
+func isDirEmpty(dir string) (bool, error) {
+	f, err := os.Open(dir)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	_, err = f.Readdir(1)
+	if err == io.EOF {
+		return true, nil
+	}
+	return false, err
 }
 
 // for testing purposes to clear away the entire storage
 func (s *Store) Clear() error {
 	// Clear the entire storage by removing the root directory
 	return os.RemoveAll(s.Root)
+}
+
+/* 5. Write the file to the store and return the number of bytes written ---------------- */
+func (s *Store) WriteDecrypt(encKey []byte, id string, key string, r io.Reader) (int64, error) {
+	f, err := s.openFileForWriting(id, key)
+	if err != nil {
+		return 0, err
+	}
+	n, err := copyDecrypt(encKey, r, f)
+	return int64(n), err
 }
 
 // ------------------------------ XXXXXXXXXXXXXXX----------------------------------------- //
