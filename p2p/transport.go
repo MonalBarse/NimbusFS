@@ -9,6 +9,7 @@ type Peer interface {
 	Close() error      // Close closes the connection between the local node and the remote node
 	Send([]byte) error // Send sends a message to the remote node
 	net.Conn           // Conn returns the connection between the local node and the remote node
+	// All of these merthods are implemented in the TCPPeer struct in tcp_transport.go
 }
 
 /*
@@ -22,5 +23,5 @@ type Transport interface {
 	ListenAndAccept() error // ListenAndAccept listens for incoming connections and accepts them if they are of the correct protocol may it be TCP, UDP  websockets etc
 	Close() error           // Close closes the connection between the local node and the remote node
 	Consume() <-chan RPC    // Consume returns a channel that will be used to receive messages from the network
-
+	// All of these merthods are implemented in the TCPTransport struct in tcp_transport.go
 }

@@ -6,17 +6,32 @@ import (
 	"sync"
 )
 
-// TCPPeer represents the remote node over a TCP established connection
-// TCPPeer struct gives us the info about the connection and the direction of the connection
+// ----------------------------- Core Structures ----------------------------- //
+
 type TCPPeer struct {
-	// conn is the connection that is established between the local node and the remote node (between the peers)
 	net.Conn
-	// if we dial and connect to a peer then outbound is true,
-	// if a peer connects to us then outbound is false
 	outbound bool
-	// wg is a wait group that is used to wait for the connection to close
-	wg *sync.WaitGroup
+	wg       *sync.WaitGroup
 }
+
+type TCPTransport struct {
+	TCPTransportOptions
+	listener net.Listener    // listener is a server that listens for incoming connections
+	rpcCh    chan RPC        // rpcCh is a channel that will be used to receive messages from the network
+	mu       sync.RWMutex    // mu is a mutex that will be used to synchronize access to
+	peers    map[string]Peer // peers is a map that will store the peers
+}
+
+type TCPTransportOptions struct {
+	ListenAddress string
+	HandshakeFunc HandshakeFunc    // in this project we are using NOPHandshakeFunc does nothing. But if we want to implement the handshake we can implement it by creating a function and passing it here
+	Decoder       Decoder          // Decoder is an interface that defines the methods that a decoder must implement
+	OnPeer        func(Peer) error // When new peer is connected, this function does something - here we are doing nothing
+}
+
+// ------------------------------- xxxxxxx ----------------------------------- //
+
+// ------------------- Peer and Transport Initialization --------------------- //
 
 func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 	return &TCPPeer{
@@ -26,60 +41,74 @@ func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 	}
 }
 
-type TCPTransport struct {
-	TCPTransportOptions
-	listener net.Listener
-	rpcCh    chan RPC
-
-	mu    sync.RWMutex
-	peers map[string]Peer
-}
-
-// Close closes the connection between the local node and the remote node
-func (p *TCPPeer) CloseStream() {
-	p.wg.Done()
-}
-
-func (p *TCPPeer) Send(b []byte) error {
-	_, erer := p.Conn.Write(b)
-	return erer
-}
-
-type TCPTransportOptions struct {
-	ListenAddress string
-	HandshakeFunc HandshakeFunc
-	Decoder       Decoder          // Decoder will be used to decode the incoming data into RPC (Remote Procedure Call) which will be used to send data between the peers
-	OnPeer        func(Peer) error // OnPeer is a function that will be called when a new peer is connected
-}
-
 func NewTCPTransport(options TCPTransportOptions) *TCPTransport {
 	return &TCPTransport{
 		TCPTransportOptions: options,
 		rpcCh:               make(chan RPC, 1024),
+		peers:               make(map[string]Peer),
 	}
 }
 
-// Addr returns the address of the local node
-// it implements a method from the Transport interface, the trnasport is accepting connections on this address
+// ------------------------------- xxxxxxx ----------------------------------- //
+// ------------------ Methods of TCPPeer for Peer Operations ----------------- //
+
+/* Index
+1. CloseStream: Close the stream
+2. Send: Send data to the peer
+*/
+
+// 1. CloseStream ---------------------------//
+func (p *TCPPeer) CloseStream() {
+	p.wg.Done()
+}
+
+// 2. Send ---------------------------//
+func (p *TCPPeer) Send(b []byte) error {
+	_, err := p.Write(b)
+	return err
+}
+
+// ------------------------------- xxxxxxx ----------------------------------- //
+// ------------- Methods of TCPTransport for Transport Operations ------------ //
+
+/* Index
+1. Addr: Get the listening address
+2. Consume: a .Consume will return a channel that will be used to receive messages from the network.
+3. Close: Close the transport
+4. Dial: Dial a remote peer
+5. ListenAndAccept: Start listening and accepting connections
+*/
+
+// 1. Addr ---------------------------//
 func (t *TCPTransport) Addr() string {
 	return t.ListenAddress
 }
 
-// Consume returns a channel that will be used to receive messages from the network
-// it implements a method from the Transport interface
+// 2. Consume ---------------------------//
 func (t *TCPTransport) Consume() <-chan RPC {
 	return t.rpcCh
 }
 
+// 3. Close ---------------------------//
 func (t *TCPTransport) Close() error {
 	return t.listener.Close()
 }
 
-// Dial dials a remote node and returns a peers
-// it implements a method from the Transport interface
+// 4. ListenAndAccept ---------------------------//
+func (t *TCPTransport) ListenAndAccept() error {
+	var err error
+	t.listener, err = net.Listen("tcp", t.ListenAddress)
+	if err != nil {
+		return err
+	}
+	go t.startAcceptLoop()
+	return nil
+}
 
+// 5. Dial ---------------------------//
 func (t *TCPTransport) Dial(address string) error {
-	conn, err := net.Dial("tcp", address)
+	// Dial connects to the address on the named network.
+	conn, err := net.Dial("tcp", address) //	Dial("tcp", "198.51.100.1:80") //	Dial("udp", "[2001:db8::1]:domain") //	Dial("tcp", ":80")
 	if err != nil {
 		return err
 	}
@@ -87,77 +116,66 @@ func (t *TCPTransport) Dial(address string) error {
 	return nil
 }
 
-// ListenAndAccept listens for incoming connections and accepts them if they are of the correct protocol may it be TCP, UDP  websockets etc
-func (t *TCPTransport) ListenAndAccept() error {
-	var err error
+// ------------------------------- xxxxxxx ----------------------------------- //
 
-	t.listener, err = net.Listen("tcp", t.ListenAddress)
-	if err != nil {
-		return err
-	}
-	go t.startAcceptLoop()
-	return nil
+// -------------------- Internal Methods of TCPTransport --------------------- //
 
-}
+/* Index
+1. startAcceptLoop: Start accepting connections
+2. handleConn: Handle a new connection
+*/
+
+// 1. startAcceptLoop ---------------------------//
 func (t *TCPTransport) startAcceptLoop() {
-	// Accept incoming connections
-	// Once a connection is accepted, it will be handled by handleConn
 	for {
-		conn, err := t.listener.Accept()
-
+		conn, err := t.listener.Accept() // conn is the connection object and err is the error object
 		if err != nil {
 			fmt.Printf("TCPTransport: failed to accept connection: %v\n", err)
 			continue
 		}
-
-		go t.handleConn(conn, false)
+		go t.handleConn(conn, false) // here after accepting the connection (inbound) we are handling the connection by calling handleConn (outbound = false)
 	}
-
 }
 
+// 2. handleConn ---------------------------//
 func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
-	fmt.Printf("Handling connection %+v\n", conn)
-	// Read the first byte to determine the protocol
-	// If the protocol is not supported, close the connection
-	// If t the protocol is supported, pass the connection to the appropriate handler
+	peer := NewTCPPeer(conn, outbound) // creates a new TCPPeer object using the connection
 
-	var err error
-	defer func() {
-		fmt.Printf("Closing connection %+v\n", conn)
-		conn.Close()
-	}()
-	peer := NewTCPPeer(conn, outbound)
-	// fmt.Printf("Peer %+v\n", peer)
-
-	if err = t.HandshakeFunc(peer); err != nil {
+	if err := t.HandshakeFunc(peer); err != nil { //performs a handshake using the HandshakeFunc, here we are using NOPHandshakeFunc
 		fmt.Printf("TCPTransport: handshake failed: %v\n", err)
+		conn.Close()
 		return
 	}
 
-	if t.OnPeer != nil {
-		if err = t.OnPeer(peer); err != nil {
+	if t.OnPeer != nil { // The OnPeer function is called when a new peer is connected. It is used to do something when a new peer is connected. Here we are doing nothing
+		if err := t.OnPeer(peer); err != nil {
 			fmt.Printf("TCPTransport: OnPeer failed: %v\n", err)
+			conn.Close()
 			return
 		}
 	}
 
-	// Read Loop
+	// The peer is added to the peers map
+	t.mu.Lock()
+	t.peers[conn.RemoteAddr().String()] = peer // conn.RemoteAddr() will give the address of the remote peer
+	t.mu.Unlock()
+
 	for {
-		message := RPC{}
-		err = t.Decoder.Decode(conn, &message) // Decode the incoming data into RPC (Remote Procedure Call) which will be used to send data between the peers
+		rpc := RPC{}
+		err := t.Decoder.Decode(conn, &rpc) //It uses the Decoder to decode the incoming message into the RPC object.
 		if err != nil {
-			return
+			break
 		}
-		message.From = conn.RemoteAddr().String()
-		if message.Stream {
-			peer.wg.Add(1)
-			fmt.Printf("Stream message incoming.... %s\n", conn.RemoteAddr())
-			peer.wg.Wait()
-
-			fmt.Printf("%s Stream Closed, resuming reading loop\n", conn.RemoteAddr())
-			continue
-
-		}
+		// It sets the From field of the RPC to the remote address. It sends the RPC object to the rpcCh channel for processing.
+		rpc.From = conn.RemoteAddr().String()
+		t.rpcCh <- rpc
 	}
 
+	// If there is an error while decoding the message, the connection is closed and the peer is removed from the peers map.
+	t.mu.Lock()
+	delete(t.peers, conn.RemoteAddr().String())
+	t.mu.Unlock()
+	conn.Close()
 }
+
+// ------------------------------- xxxxxxx ----------------------------------- //
