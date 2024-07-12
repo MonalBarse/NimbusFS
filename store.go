@@ -6,12 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
-const defaultRootFolderName = "nimbud_root"
+const defaultRootFolderName = "nimus_root"
 
 // --------------------------Path Transform Functions------------------------------------ //
 func CASPathTransformFunc(key string) PathKey {
@@ -37,13 +37,12 @@ func CASPathTransformFunc(key string) PathKey {
 
 type PathTransformFunc func(string) PathKey
 
-// Default path is provided because if user does not provide path and filename and just provides the content 'key' then we can use this default path to store the content
 var DefaultPathTransformFunc = func(key string) PathKey {
 	return PathKey{
 		PathName: key, // Default path transformation just uses the key
 		Filename: key,
 	}
-}
+} // DefaultPathTransformFunc will be used if the user does not provide any path transformation function
 
 // ------------------------------ XXXXXXXXXXXXXXX---------------------------------------- //
 // ------------------------------- PathKey Struct --------------------------------------- //
@@ -124,7 +123,11 @@ func (s *Store) openFileForWriting(id string, key string) (*os.File, error) {
 
 	fullPathWithRoot := fmt.Sprintf("%s/%s/%s", s.Root, id, pathKey.FullPath()) // The fullPathWithRoot will be "nimus_dir/user1/68044/29f74/181a6/3c50c/3d81d/733a1/2f14a/353ff/hello.txt"
 
-	return os.Create(fullPathWithRoot)
+	f, err := os.Create(fullPathWithRoot) // os.Create creates or truncates the named file. If the file already exists, it is truncated. If the file does not exist, it is created with mode 0666 (before umask).
+	if err != nil {
+		return nil, err
+	}
+	return f, nil // The file will be created and returned
 }
 
 /* 2. Read the file from the store and return the number of bytes read and the reader --- */
@@ -168,10 +171,6 @@ func (s *Store) Has(id string, key string) bool {
 func (s *Store) Delete(id string, key string) error {
 	pathKey := s.PathTransformFunc(key)
 
-	defer func() {
-		log.Printf("deleted [%s] from disk", pathKey.Filename)
-	}()
-
 	fullPathWithRoot := fmt.Sprintf("%s/%s/%s", s.Root, id, pathKey.FullPath())
 
 	// Remove the specific file
@@ -179,20 +178,28 @@ func (s *Store) Delete(id string, key string) error {
 		return fmt.Errorf("failed to delete file: %w", err)
 	}
 
-	// We then can clean up empty directories
-	subFolders := strings.Split(fullPathWithRoot, "/")
-	for i := len(subFolders) - 1; i >= 0; i-- {
-		subPath := strings.Join(subFolders[:i+1], "/")
-		isEmpty, err := isDirEmpty(subPath)
+	// Clean up empty directories up to the root
+	for {
+		parentDir := filepath.Dir(fullPathWithRoot)
+		if parentDir == s.Root {
+			break // Stop at the root folder to avoid unintended deletions
+		}
+
+		isEmpty, err := isDirEmpty(parentDir)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to check directory: %w", err)
 		}
-		if !isEmpty {
-			break
+
+		if isEmpty {
+			if err := os.Remove(parentDir); err != nil {
+				return fmt.Errorf("failed to remove directory: %w", err)
+			}
+		} else {
+			break // Stop if we encounter a non-empty directory
 		}
-		if err := os.Remove(subPath); err != nil {
-			return err
-		}
+
+		// Move up to the parent directory
+		fullPathWithRoot = parentDir
 	}
 
 	return nil

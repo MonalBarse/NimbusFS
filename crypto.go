@@ -1,4 +1,5 @@
 // Description: This file contains the encryption and decryption functions
+// Description: This file contains the encryption and decryption functions
 package main
 
 import (

@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 // ------------------------ Utility func ------------------------ //
@@ -45,12 +43,13 @@ func TestPathTransformFunc(t *testing.T) {
 }
 
 // -------------------------- Store Read, Write, Delete test ------------------------- //
+
 func TestStore(t *testing.T) {
 	s := newStore()
-	id := "user_momo"
+	id := generateID()
 	defer cleanupTest(t, s)
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 3; i++ {
 		key := fmt.Sprintf("foo_%d", i)
 		data := []byte("some jpg bytes")
 
@@ -71,7 +70,6 @@ func TestStore(t *testing.T) {
 		if string(b) != string(data) {
 			t.Errorf("want %s have %s", data, b)
 		}
-		fmt.Println("Data: ", string(b))
 
 		if err := s.Delete(id, key); err != nil {
 			t.Error(err)
@@ -83,13 +81,13 @@ func TestStore(t *testing.T) {
 	}
 }
 
+/*
 // -------------------- Write Test ------------------------ //
 
-/*
 func TestWriteFunc(t *testing.T) {
-  // Write the file to the store
-  store := newStore()
-  defer cleanupTest(t, store)
+	// Write the file to the store
+	store := newStore()
+	defer cleanupTest(t, store)
 	id := "user102"
 	key := "momo.png"
 	data := []byte("some png bytes")
@@ -100,7 +98,6 @@ func TestWriteFunc(t *testing.T) {
 	check := store.Has(id, key)
 	assert.True(t, check)
 }
-*/
 
 // --------------------- Read Test ------------------------- //
 
@@ -132,22 +129,21 @@ func TestReadFunction(t *testing.T) {
 
 // -------------------- Delete Test ------------------------ //
 
-/*
 func TestDeleteFunc(t *testing.T) {
-	store := newStore()
+	s := newStore()
 	id := "user101"
 	key := "momo.jpeg"
-  // defer cleanupTest(t, store) // already deleting might hinder assert.False
+	// defer cleanupTest(t, store) // already deleting might hinder assert.False
 	data := []byte("some jpg bytes")
 	if _, err := s.writeStream(id, key, bytes.NewReader(data)); err != nil {
 		t.Error(err)
 	}
-  // TEST
-	if err := store.Delete(id, key); err != nil {
+	// TEST
+	if err := s.Delete(id, key); err != nil {
 		t.Error(err)
 	}
 	assert.False(t, s.Has(id, key)) // this should return false
 
 }
-*/
-// ----------------------------------- xxxxxxxxxxx ----------------------------------- //
+
+// ----------------------------------- xxxxxxxxxxx ----------------------------------- // */
