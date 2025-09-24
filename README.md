@@ -4,9 +4,9 @@ NimbusFS is a robust, distributed, peer-to-peer Content Addressable Storage (CAS
 
 ## Conceptual Overview
 
-Imagine NimbusFS as a magical, self-organizing library. Instead of one central building, every member holds a piece of the collection. When you add a book, the library gives it a unique fingerprint (a hash). Copies of the book are then cleverly and securely distributed among all the members. If you want to read that book later, you just ask the library for it by its fingerprint, and the nearest members who have a copy deliver it to you instantly.
+NimbusFS is a distributed Content-Addressable Storage system where data is replicated across multiple nodes without requiring centralized coordination. Each file is identified by its cryptographic hash (SHA-1), ensuring content integrity and deduplication. The system distributes encrypted copies of files across participating nodes, enabling resilient data retrieval even when individual nodes become unavailable.
 
-**The Problem We Solve:** Traditional storage relies on centralized servers — single points of failure that can go down, be censored, or be controlled by one entity. NimbusFS offers a peer-to-peer alternative where your data is resilient, distributed, and truly belongs to the network of participants rather than any single authority.
+**The Problem Addressed:** Traditional storage systems rely on centralized servers that create single points of failure, potential for censorship, and centralized control. NimbusFS provides a peer-to-peer alternative where data resilience is achieved through distribution across network participants rather than dependence on any single authority.
 
 ## Potential Use Cases
 
@@ -21,7 +21,7 @@ Imagine NimbusFS as a magical, self-organizing library. Instead of one central b
 - [Conceptual Overview](#conceptual-overview)
 - [Potential Use Cases](#potential-use-cases)
 - [How It Works](#how-it-works)
-- [Our Guarantees & How We Keep Them](#our-guarantees--how-we-keep-them)
+- [System Guarantees & Implementation](#system-guarantees--implementation)
 - [Architecture](#architecture)
 - [Resources](#resources)
 - [Getting Started](#getting-started)
@@ -34,35 +34,35 @@ Imagine NimbusFS as a magical, self-organizing library. Instead of one central b
 
 ## How It Works
 
-Continuing our magical library analogy, here's what happens when you interact with NimbusFS:
+NimbusFS operates through a distributed protocol handling file storage and retrieval across network nodes:
 
-### Storing a File (Adding a Book)
-When you want to add a new file, you bring it to the "librarian" (your NimbusFS node). The librarian creates a unique fingerprint for it using SHA-1 hashing (`store.go`), locks it in a secure, encrypted box using AES encryption (`crypto.go`), and then sends copies of this box to other members of the library network via TCP connections (`p2p/tcp_transport.go`). Your librarian also announces to everyone, "I have a new book with this fingerprint!"
+### Storing a File
+When storing a file, the local NimbusFS node generates a SHA-1 hash fingerprint (`store.go`), encrypts the content using AES encryption (`crypto.go`), and distributes encrypted copies to peer nodes via TCP connections (`p2p/tcp_transport.go`). The node announces the file's availability by broadcasting its hash identifier to the network.
 
-### Retrieving a File (Requesting a Book)
-When you need a file, you ask the network, "Does anyone have the book with this fingerprint?" Your local librarian first checks its own shelves (`store.go`). If it's not there, it broadcasts the request to the network (`fileserver.go`). The first librarian to respond sends you their encrypted copy, which your librarian automatically decrypts for you using the shared encryption key.
+### Retrieving a File
+File retrieval begins with a hash-based lookup on the local node (`store.go`). If the file is not available locally, the node broadcasts a retrieval request to the network (`fileserver.go`). Peer nodes respond with encrypted file data, which is automatically decrypted using the appropriate encryption key.
 
-## Our Guarantees & How We Keep Them
+## System Guarantees & Implementation
 
-### Data Integrity & No Duplicates
-**Our Guarantee:** Your files will never be secretly corrupted, and we never waste space storing the same file twice.
+### Data Integrity & Deduplication
+**Guarantee:** Files maintain integrity and identical content is never duplicated across the system.
 
-**How We Keep It:** We use a technique called "Content-Addressing" (`store.go`), where every file gets a unique fingerprint (SHA-1 hash). If even a single bit changes, the fingerprint changes completely, so we immediately know the file is different. This also means identical files always get the same fingerprint, preventing duplicates.
+**Implementation:** Content-addressing via SHA-1 hashing (`store.go`) ensures each file receives a unique fingerprint based on its content. Any modification changes the hash completely, enabling immediate detection of alterations. Identical files produce identical hashes, preventing storage duplication.
 
-### No Central Point of Failure
-**Our Guarantee:** Your data is safe even if multiple computers go offline.
+### Fault Tolerance
+**Guarantee:** Data remains accessible despite multiple node failures.
 
-**How We Keep It:** This is a true Peer-to-Peer system (`p2p/tcp_transport.go`). Files are distributed across many nodes in the network. There is no "main" server to attack, control, or fail. Each node can store, retrieve, and serve files independently.
+**Implementation:** The peer-to-peer architecture (`p2p/tcp_transport.go`) distributes files across multiple nodes without central coordination. Each node operates independently for storage, retrieval, and serving operations, eliminating single points of failure.
 
 ### Privacy & Security
-**Our Guarantee:** No one can snoop on your files as they travel across the network.
+**Guarantee:** File contents remain confidential during network transmission.
 
-**How We Keep It:** We use strong AES encryption (`crypto.go`) to lock your data before it ever leaves your machine. Each node has its own encryption key, ensuring that only authorized participants can decrypt and access the files.
+**Implementation:** AES encryption (`crypto.go`) secures data before network transmission. Each node maintains independent encryption keys, ensuring only authorized participants can decrypt and access file contents.
 
 ### Efficient Network Usage
-**Our Guarantee:** Files are shared efficiently without unnecessary network overhead.
+**Guarantee:** File sharing minimizes network overhead through optimized data structures.
 
-**How We Keep It:** We use custom GOB encoding for efficient data serialization and smart path transformation functions that organize files in a hierarchical structure, making lookups fast and network requests minimal.
+**Implementation:** GOB encoding provides efficient data serialization, while hierarchical path transformation functions organize files for fast lookups and minimal network requests.
 
 ## Architecture
 
@@ -90,7 +90,7 @@ These educational videos provided foundational knowledge and inspiration for bui
 
 ## Getting Started
 
-For developers who want to run a node in our distributed network, here's how you can get started:
+For developers who want to run a node in the distributed network, here's how to get started:
 
 ### Prerequisites
 
@@ -120,7 +120,7 @@ To see NimbusFS in action, run:
 ```bash
 make run
 ```
-This command will build and execute the application, demonstrating the magical library in action!
+This command will build and execute the application, demonstrating the distributed storage system!
 
 ### Running Tests
 
@@ -131,39 +131,39 @@ make test
 
 ### Understanding the Default Demo
 
-The `main.go` file sets up a network of three file servers (like three interconnected library branches):
+The `main.go` file sets up a network of three file servers:
 
-1. **Library Branch 1** listens on port 3000
-2. **Library Branch 2** listens on port 7000  
-3. **Library Branch 3** listens on port 5000 and connects to the other two branches
+1. **Server 1** listens on port 3000
+2. **Server 2** listens on port 7000  
+3. **Server 3** listens on port 5000 and connects to the other two servers
 
-The demo then shows the magic by:
+The demo demonstrates distributed storage capabilities by:
 
-1. **Adding 20 "books"** (files named "picture_0.png" to "picture_19.png") to Branch 3
-2. **Destroying Branch 3's local copy** (simulating a local disk failure)
-3. **Successfully retrieving all books from the network** — they're still available from Branches 1 and 2!
+1. **Storing 20 files** (named "picture_0.png" to "picture_19.png") on Server 3
+2. **Deleting Server 3's local copies** (simulating local storage failure)
+3. **Successfully retrieving all files from the network** — the data remains available from Servers 1 and 2
 4. **Printing the contents** of each retrieved file
 
-This perfectly demonstrates the distributed nature of our magical library: even when one branch loses its books, the network remembers and can deliver them from other branches.
+This demonstrates the distributed nature of the system: when one node loses its local data, the network maintains availability through other participating nodes.
 
 ### Customizing Your Own Network
 
-To create your own network of NimbusFS nodes, you can modify the `main.go` file:
+To create a custom network of NimbusFS nodes, modify the `main.go` file:
 
-**Creating Library Branches:**
+**Creating Servers:**
 ```go
 server := makeServer(listenAddr, bootstrapNodes...)
 ```
 Where:
-- `listenAddr` is the address your branch will listen on (e.g., ":3000")
-- `bootstrapNodes` are addresses of existing branches to connect to (can be empty for the first branch)
+- `listenAddr` is the address for the server to listen on (e.g., ":3000")
+- `bootstrapNodes` are addresses of existing servers to connect to (can be empty for the first server)
 
-**Starting Your Branches:**
+**Starting Servers:**
 ```go
 go server.Start()
 ```
 
-**Adding and Retrieving Books:**
+**File Operations:**
 
 - To store a file:
   ```go
@@ -186,15 +186,15 @@ go server.Start()
 
 ## Architecture
 
-NimbusFS is built on several key components that work together like the staff of our magical library:
+NimbusFS is built on several key components that handle different aspects of the distributed storage system:
 
-1. **FileServer** (`fileserver.go`): The main "librarian" that manages file operations, coordinates with other library branches (peers), and handles requests from visitors.
+1. **FileServer** (`fileserver.go`): The central coordination component that manages file operations, maintains peer connections, and handles incoming storage and retrieval requests. It orchestrates communication between the storage layer and network layer, processing messages via GOB decoding and routing them to appropriate handlers.
 
-2. **Store** (`store.go`): The "filing system" that handles local book storage with smart organization. It uses the Content-Addressable System to give each file a unique location based on its fingerprint.
+2. **Store** (`store.go`): The local storage management component that implements content-addressable storage through configurable path transformation functions. It handles file persistence, retrieval, and integrity checking using SHA-1 hashing for content identification and hierarchical directory organization for efficient lookups.
 
-3. **TCPTransport** (`p2p/tcp_transport.go`): The "communication network" that manages conversations between different library branches, handling connections and message passing.
+3. **TCPTransport** (`p2p/tcp_transport.go`): The network communication component that manages TCP connections between peers. It handles connection establishment, peer discovery, message routing, and provides abstractions for sending data streams between nodes in the distributed network.
 
-4. **Crypto** (`crypto.go`): The "security system" that encrypts books before sending them to other branches and decrypts them when they're needed locally.
+4. **Crypto** (`crypto.go`): The security component that provides AES encryption and decryption capabilities for data in transit. It generates encryption keys, handles secure data transformation during network operations, and ensures confidentiality of stored and transmitted content.
 
 ## Resources
 
